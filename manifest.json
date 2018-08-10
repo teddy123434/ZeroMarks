@@ -1,0 +1,47 @@
+{
+  "manifest_version": 2,
+
+  "name": "ZeroMark",
+  "description": "Easy Manage your tabs and marks",
+  "version": "0.0.2",
+
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "bookmarks",
+    "contextMenus",
+    "unlimitedStorage"
+  ],
+
+  "background": {
+    "scripts": [ "backgrounds/popupBg.js","backgrounds/contextMenu.js","backgrounds/tabManagerBg.js","backgrounds/bookMark.js" ],
+    "persistent": true
+  },
+
+  "options_page": "options.html",
+
+  "browser_action": {
+    "default_icon": "icon.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [ "*://*/*" ],
+      "js": [ "thirdParty/jquery-ui-1.12.1.custom/external/jquery/jquery.js","thirdParty/jquery-ui-1.12.1.custom/jquery-ui.js","contents/tabManager.js" ],
+      "run_at": "document_end"
+    }
+  ],
+
+  "commands":{
+      "key_openTabManager":{
+        "suggested_key":{
+          "default":"Alt+G"
+        },
+        "description":"Open TabManager"
+      }
+  },
+
+  "web_accessible_resources": ["contents/tabManagerDesign.html","imgs/*"],
+  "content_security_policy": "script-src 'self' https://ajax.googleapis.com; object-src 'self'"
+}
