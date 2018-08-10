@@ -1,31 +1,28 @@
-function Configs(aDefualt,aConfigs){
-    
-    this.defualt = aDefualt;
-    this.configs = aConfigs;
+var configs;
 
-    this.get = (key)=>{
-        return (configs[key]!=undefined)?configs[key]:this.default[key];
-    }
+configs.default = null;
+configs.configs = null;
 
-    this.load = ()=>{
+configs.get = (key) => {
+    return (configs[key] != undefined) ? configs[key] : this.default[key];
+}
 
-    }
-
-    this.reset = ()=>{
-        
-    }
-
-    this.set = (key,val)=>{
-        if(key!=undefined && val != undefined)
-        {
-            configs[key] = val;
-            log.dbg("change config " + key + " to " + val);
-            save();
-        }
-    }
-
-    this.save = ()=>{
-
+configs.set = (key, val) => {
+    if (key != undefined && val != undefined) {
+        configs[key] = val;
+        log.dbg("change config " + key + " to " + val);
+        save();
     }
 }
 
+configs.load = () => {
+
+}
+
+this.save = () => {
+
+}
+
+configs.reset = () => {
+
+}

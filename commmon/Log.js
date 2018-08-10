@@ -1,11 +1,11 @@
 var dbg = true;
 
-function Log(alogpipe = console.log)
-{
-    this.logpipe = alogpipe;
-    this.dbg = (msg){
-        if(dbg){
-            logpipe(msg);
-        }
+var log;
+
+log.logpipe = console.log;
+
+log.dbg = (msg) => {
+    if (dbg) {
+        logpipe(msg);
     }
 }
