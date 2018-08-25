@@ -3,7 +3,7 @@
 
   "name": "ZeroMark",
   "description": "Easy Manage your tabs and marks",
-  "version": "0.0.2",
+  "version": "0.1.0",
 
   "permissions": [
     "activeTab",
@@ -15,14 +15,14 @@
   ],
 
   "background": {
-    "scripts": [ "backgrounds/popupBg.js","backgrounds/contextMenu.js","backgrounds/tabManagerBg.js","backgrounds/bookMark.js" ],
+    "scripts": [ "backgrounds/popupBg.js","backgrounds/tabManagerBg.js","backgrounds/contextMenu.js","backgrounds/bookMark.js" ],
     "persistent": true
   },
 
   "options_page": "options.html",
 
   "browser_action": {
-    "default_icon": "icon.png"
+    "default_icon": "imgs/icon.png"
   },
 
   "content_scripts": [

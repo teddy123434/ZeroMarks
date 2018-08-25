@@ -5,7 +5,6 @@ function messageHandler(msg, sender, response) {
             {
                 chrome.tabs.query({},response);
                 break;
-                
             }
 
             case 'RemoveTabbyIds':

@@ -1,0 +1,82 @@
+<head>  
+    <style type="text/css">
+    /* basic style */
+    .tabSearchBar{
+        position: relative;
+        height: 1.2rem;
+        width: 18rem;
+        margin: 5px;
+        resize: none;
+        background:white;
+    }
+
+    .list{
+        position: relative;
+        overflow-y:scroll;
+        overflow-x: hidden;
+        height: 100%;
+    }
+
+
+    .listItem{
+        background : #f0f0f7;
+        height: 2.5rem;
+        position: relative;
+        margin: 5px;
+        border-radius: 2px;
+        display: flex;
+        align-items: center;
+        padding: 2px 12px;
+    }
+    
+    .listItem_selected{
+        border-style: solid;
+        border-width: 2px;
+        border-color:skyblue;
+        margin: 3px 5px;
+        padding: 0px 12px;
+    }
+
+    .tabobj{
+        display: flex;
+        align-items: center;
+    }
+    
+    .tabid{
+        display: none;
+    }
+
+    .favicon{
+        display: block;
+        position: flex;
+        background-size: 1rem 1rem;
+        width: 1rem;
+        height: 1rem;
+        margin-right: 5px;
+        resize: none;
+    }
+
+    .tabtitle{
+        text-overflow: ellipsis;
+        display : inline-block;
+        white-space: nowrap;
+        overflow: hidden;
+        height: 100%;
+        width: 15rem;
+        font-size: 1rem;
+    }
+
+    .closeButton {
+        position: absolute;    
+        width: 1.8rem;
+        height: 1.8rem;
+        right: 2px;
+    }
+
+    </style>
+</head>
+<body>
+    <input class='tabSearchBar' type="text"/>    
+    <div class="list">
+    </div>
+</body>
