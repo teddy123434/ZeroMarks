@@ -5,128 +5,107 @@
     最後編輯時間：2018/6/9 10:00
 */
  
-var tabList = [];
-var searchStr ="";
+var tabContainer;
+var searchStrs = {};
 
-function findFirstIndex(array,obj,geter = (x)=>{return x;})
-{
-    for(var i = 0;i<array.length;i++)
-    {
-        if(geter(array[i])==obj) return i;
-    }
-    return -1;
+tabManagerBgInit();
+
+function tabManagerBgInit(){
+    console.log("init tab manager bg");
+
+    getLatestTabList((tabList)=>{
+        tabContainer = new TabContainer(tabList);
+    });
 }
 
-function sendMessageToAllTab(msg)
-{
-    chrome.tabs.query({},(tabs)=>{
-        tabs.forEach(tab => {
-            chrome.tabs.sendMessage(tab.id,msg);
-        });
-    })
-}
-
-window.onload=()=>{
-    refreshTabList();
-}
-
-//取得瀏覽器當前分頁列表
-function refreshTabList(callback)
+function getLatestTabList(callback)
 {
     console.log("refreshing");
-    chrome.tabs.query({},tabs=>{
-        tabs.forEach(tab => {
-            let i = findFirstIndex(tabList,tab.id,x=>x.id);
-            tab.managerSelect = (i==-1)?false:tabList[i].managerSelect;
+    chrome.tabs.query({},apiTabs=>{
+        apiTabs.forEach(apiTab => {
+            apiTab.managerSelect = false;
+            apiTab.matchSearch = true;
         });
 
-        tabList = tabs;
-
-        if(typeof(callback)=="function")callback();
+        if(typeof(callback)=="function") callback(apiTabs);
     });
 }
 
-function updataAllManager()
+function changeTabSelect(windowId,tabId,select)
 {
-    sendMessageToAllTab({command:"updateManager"});
+    tabContainer.get(windowId,tabId).managerSelect = select;
 }
 
-function changeTabSelect(tabId,select)
+function selectAllInWindow(windowId)
 {
-    tabList.forEach(tab => {
-        if(tab.id==tabId)
-        {
-            tab.managerSelect=(select==null?(!tab.managerSelect):select);
-            updataAllManager();
-        }
-    });
-}
-
-function selectAll()
-{
-    tabList.forEach(tab=>{
+    tabContainer.getWindow(windowId).forEach(tab=>{
         tab.managerSelect = true;
-    })
-
-    updataAllManager();
+    });
 }
 
-function cancelSelect()
+function cancelSelectInWindow(windowId)
 {
-    tabList.forEach(tab=>{
+    tabContainer.getWindow(windowId).forEach(tab=>{
         tab.managerSelect = false;
     })
-    updataAllManager();
 }
 
-function isMatchSearch(tab)
+function isMatchSearch(tab,searchStr)
 {
     if(searchStr == "")return true;
-    var reg = RegExp(searchStr,"i");
-    var b = reg.test(tab.title);
+    let reg = RegExp(searchStr,"i");
+    let b = reg.test(tab.title);
     return b;
 }
 
-function searchWithSearchStr()
+function searchWithSearchStrInWindow(windowId)
 {
-    for(var i = 0;i<tabList.length;i++)
-    {
-         if(!isMatchSearch(tabList[i])){
-            tabList.remove(i--);
-            //  tabList.splice(0,1);
-        }
-    }
+    tabContainer.getWindow(windowId).forEach(tab => {
+        tab.matchSearch = isMatchSearch(tab,searchStrs[windowId]);
+    });
 }
-/*
-function onCreate(tab)
+
+function onRemove(tabId,removeInfo)
 {
-    if(isMatchSearch(tab))
+    if(tabContainer.isWindowExist(removeInfo.windowId))
     {
-        tabList.push(tab);
-        //sendMessageToAllTab({command:"onCreateEvent",tab:tab});
-        updataAllManager();
-    }
-}
-*/
-function onRemove(tabId)
-{
-    var i = findFirstIndex(tabList,tabId,(x)=>{return x.id;});
-    if(i!=-1)
-    {
-        tabList.remove(i);
-        //tabList.splice(0,1);
-        //sendMessageToAllTab({command:"onRemoveTab",tabId:tabId});
-        updataAllManager();
+        if(removeInfo.isWindowClosing){tabContainer.removeWindow(removeInfo.windowId);return;}
+        tabContainer.remove(removeInfo.windowId,tabId);
+        sendMessageToWindowActive(removeInfo.windowId,"onTabRemove",{'tabId':tabId});
     }
 }
 
-function onUpdated(tabId,changeInfo)
+function onUpdated(tabId,changeInfo,tab)
 {
     if(changeInfo.status == "complete")
     {
-        refreshTabList();
-        updataAllManager()
+        tab.managerSelect = (tabContainer.isTabExist(tabId) ? tabContainer.get(tab.windowId,tabId).managerSelect : false);
+        tab.matchSearch = isMatchSearch(tab,searchStrs[tab.windowId]);
+        tabContainer.set(tab.windowId,tabId,tab);
+        sendMessageToWindowActive(tab.windowId,"onTabChange",{'tab':tab});
     }
+}
+
+function onDetached(tabId,detachInfo)
+{
+    tabContainer.remove(detachInfo.oldWindowId,tabId);
+    sendMessageToWindowActive(detachInfo.oldWindowId,"onTabRemove",{'tabId':tabId});
+}
+
+function onAttached(tabId,attachInfo)
+{
+    chrome.tabs.get(tabId,apiTtab=>{
+        apiTtab.managerSelect = false;
+        apiTtab.matchSearch = isMatchSearch(apiTtab,searchStrs[apiTtab.windowId]);
+        tabContainer.set(attachInfo.newWindowId,tabId,apiTtab);
+        //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
+        chrome.tabs.sendMessage(activeInfo.tabId,{command:"updateManager"});
+    });
+}
+
+function onActivated(activeInfo)
+{
+    chrome.tabs.sendMessage(activeInfo.tabId,{command:"updateManager"});
 }
 
 //監聽內容腳本操作任務要求
@@ -139,7 +118,7 @@ chrome.runtime.onMessage.addListener(
                 //切換分頁
                 case "ChangeCurentTab":
                 {
-                    chrome.tabs.update(Number(request.tabId), {highlighted: true});　//切換分頁
+                    chrome.tabs.update(Number(request.tabId), {active: true});　//切換分頁
                     //chrome.tabs.highlight({'tabs':request.tabId});
                     break;
                 }
@@ -147,7 +126,7 @@ chrome.runtime.onMessage.addListener(
                 //取得分頁列表
                 case "getManagerInfo":
                 {
-                    sendResponse({list:tabList,searchStr:searchStr})
+                    sendResponse({'list':tabContainer.getWindow(sender.tab.windowId),'searchStr':(typeof(searchStrs[sender.tab.windowId])!="undefined")?searchStrs[sender.tab.windowId]:searchStrs[sender.tab.windowId]=""});
                     return true; //for asyc response,without cause sendresponse not work
                     break;
                 }
@@ -167,23 +146,22 @@ chrome.runtime.onMessage.addListener(
 
                 case "selectAll":
                 {
-                    selectAll();
+                    selectAllInWindow(sender.tab.windowId);
                     break;
                 }
                 
                 case "cancelSelect":
                 {
-                    cancelSelect();
+                    cancelSelectInWindow(sender.tab.windowId);
                     break;
                 }
 
                 case "changeSearchStr":
                 {
-                    searchStr = request.str;
-                    refreshTabList(()=>{
-                        searchWithSearchStr();
-                        updataAllManager();
-                    });
+                    searchStrs[sender.tab.windowId] = request.str;
+                    searchWithSearchStrInWindow(sender.tab.windowId);
+
+                    sendResponse()
                     break;
                 }
             }
@@ -196,24 +174,24 @@ chrome.commands.onCommand.addListener(command=>{
     switch(command){
         case "key_openTabManager":
         {
-            chrome.tabs.query({currentWindow:true,active:true},(tabs)=>{
-                chrome.tabs.sendMessage(tabs[0].id,{command:"key_openTabManager"})　//控制內容腳本開關分頁
+            chrome.tabs.query({currentWindow:true,active:true},(apiTabs)=>{
+                chrome.tabs.sendMessage(apiTabs[0].id,{command:"key_openTabManager"})　//控制內容腳本開關分頁
             })
         }
     }
 });
 
 chrome.tabs.onRemoved.addListener(onRemove);
-//chrome.tabs.onCreated.addListener(refreshTabList);
 chrome.tabs.onUpdated.addListener(onUpdated);
+chrome.tabs.onDetached.addListener(onDetached);
+chrome.tabs.onAttached.addListener(onAttached);
+chrome.tabs.onActivated.addListener(onActivated);
 //chrome.tabs.onMoved.addListener(updataAllManager);
 //chrome.tabs.onHighlighted.addListener(updataAllManager);
-//chrome.tabs.onDetached.addListener(updataAllManager);
-//chrome.tabs.onAttached.addListener(updataAllManager);
-chrome.tabs.onActivated.addListener(updataAllManager);
+//chrome.tabs.onCreated.addListener(refreshTabList);
 
 Array.prototype.remove = function(from, to) {
-    var rest = this.slice((to || from) + 1 || this.length);
+    let rest = this.slice((to || from) + 1 || this.length);
     this.length = from < 0 ? this.length + from : from;
     return this.push.apply(this, rest);
   };

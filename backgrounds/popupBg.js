@@ -9,7 +9,7 @@ chrome.runtime.onMessage.addListener(
                  case "SendTabsToQuike":
                  {
                      chrome.tabs.query({currentWindow:true},function(tabs){
-                         for(var i = 0;i<tabs.length;i++)
+                         for(let i = 0;i<tabs.length;i++)
                          {
                              console.log(tabs[i].title +"\t" + tabs[i].url);
                          }
