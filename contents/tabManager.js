@@ -167,6 +167,13 @@ function updateTabList(withSearchStr = true)
     
     chrome.runtime.sendMessage({command:"getManagerInfo"},(res)=>{  //取得當前分頁列表(內容腳本無權限，需調用後台腳本)    
         if(withSearchStr && tabmg.find('.tabSearchBar').val()!=res.searchStr)tabmg.find('.tabSearchBar').val(res.searchStr);
+
+        res.list.sort((a,b)=>{
+            if(a.index < b.index) return -1;
+            else if(a.index > b.index) return 1;
+            return 0;
+        });
+
         res.list.forEach(tab=>{
            node = addManagerTab(tab);
            thisWindowId = tab.windowId;

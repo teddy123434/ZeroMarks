@@ -23,8 +23,7 @@ function getLatestTabList(callback)
     console.log("refreshing");
     chrome.tabs.query({},apiTabs=>{
         apiTabs.forEach(apiTab => {
-            apiTab.managerSelect = false;
-            apiTab.matchSearch = true;
+            apiTab = makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]);
         });
 
         if(typeof(callback)=="function") callback(apiTabs);
@@ -33,7 +32,8 @@ function getLatestTabList(callback)
 
 function changeTabSelect(windowId,tabId,select)
 {
-    tabContainer.get(windowId,tabId).managerSelect = select;
+    if(select)tabContainer.get(windowId,tabId).managerSelect = select;
+    else tabContainer.get(windowId,tabId).managerSelect  = !tabContainer.get(windowId,tabId).managerSelect;
 }
 
 function selectAllInWindow(windowId)
@@ -75,14 +75,19 @@ function onRemove(tabId,removeInfo)
     }
 }
 
-function onUpdated(tabId,changeInfo,tab)
+function onUpdated(tabId,changeInfo,apiTab)
 {
     if(changeInfo.status == "complete")
     {
-        tab.managerSelect = (tabContainer.isTabExist(tabId) ? tabContainer.get(tab.windowId,tabId).managerSelect : false);
-        tab.matchSearch = isMatchSearch(tab,searchStrs[tab.windowId]);
-        tabContainer.set(tab.windowId,tabId,tab);
-        sendMessageToWindowActive(tab.windowId,"onTabChange",{'tab':tab});
+        if(tabContainer.isTabExist(tabId))
+        {
+            apiTab.managerSelect = tabContainer.get(tab.windowId,tabId).managerSelect;
+            apiTab.matchSearch = tabContainer.get(tab.windowId,tabId).matchSearch;
+        }
+        else apiTab = makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]);
+
+        tabContainer.set(apiTab.windowId,tabId,apiTab);
+        sendMessageToWindowActive(apiTab.windowId,"onTabChange",{'tab':apiTab});
     }
 }
 
@@ -94,18 +99,64 @@ function onDetached(tabId,detachInfo)
 
 function onAttached(tabId,attachInfo)
 {
-    chrome.tabs.get(tabId,apiTtab=>{
-        apiTtab.managerSelect = false;
-        apiTtab.matchSearch = isMatchSearch(apiTtab,searchStrs[apiTtab.windowId]);
-        tabContainer.set(attachInfo.newWindowId,tabId,apiTtab);
+    chrome.tabs.get(tabId,apiTab=>{
+        let window = tabContainer.getWindow(attachInfo.windowId);
+        window.forEach(tab => {
+            if(tab.index>= apiTab.index)tab.index++;
+        });
+        
+        tabContainer.set(attachInfo.newWindowId,tabId,makeTabFromApiTab(apiTab));
         //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
-        chrome.tabs.sendMessage(activeInfo.tabId,{command:"updateManager"});
+        sendMessageToWindowActive(attachInfo.newWindowId,"updateManager");
     });
 }
 
 function onActivated(activeInfo)
 {
     chrome.tabs.sendMessage(activeInfo.tabId,{command:"updateManager"});
+}
+
+function onMoved(tabId, moveInfo)
+{
+    let window = tabContainer.getWindow(moveInfo.windowId);
+    if(moveInfo.fromIndex > moveInfo.toIndex)
+    {
+        window.forEach(tab => {
+            if(tab.index>=moveInfo.toIndex && tab.index < moveInfo.fromIndex)
+            {
+                tab.index++;
+            }
+        });
+    }
+    else
+    {
+        window.forEach(tab => {
+            if(tab.index>moveInfo.fromIndex && tab.index <= moveInfo.toIndex)
+            {
+                tab.index--;
+            }
+        });
+    }
+    let tab = tabContainer.get(moveInfo.windowId,tabId);
+    tab.index = moveInfo.toIndex;
+    tabContainer.set(moveInfo.windowId,tabId,tab);
+
+    sendMessageToWindowActive(moveInfo.windowId,"updateManager");
+}
+
+function onCreated(apiTab)
+{
+    let window = tabContainer.getWindow(apiTab.windowId);
+    window.forEach(tab => {
+        if(tab.index>= apiTab.index)tab.index++;
+    });
+    
+    apiTab.title = "Loading..."
+
+    tabContainer.set(apiTab.windowId,apiTab.id,makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]));
+    //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
+    sendMessageToWindowActive(apiTab.windowId,"updateManager");
+
 }
 
 //監聽內容腳本操作任務要求
@@ -115,6 +166,12 @@ chrome.runtime.onMessage.addListener(
         {
             switch(request.command)
             {
+                case "RefreshManager":
+                {
+                    tabManagerBgInit();
+                    sendMessageToActive("updateManager");
+                }
+
                 //切換分頁
                 case "ChangeCurentTab":
                 {
@@ -140,7 +197,7 @@ chrome.runtime.onMessage.addListener(
 
                 case "changeTabSelect":
                 {
-                    changeTabSelect(request.tabId,request.select);
+                    changeTabSelect(sender.tab.windowId,request.tabId);
                     break;
                 }
 
@@ -162,6 +219,7 @@ chrome.runtime.onMessage.addListener(
                     searchWithSearchStrInWindow(sender.tab.windowId);
 
                     sendResponse()
+                    return true; //for asyc response,without cause sendresponse not work
                     break;
                 }
             }
@@ -182,13 +240,13 @@ chrome.commands.onCommand.addListener(command=>{
 });
 
 chrome.tabs.onRemoved.addListener(onRemove);
-chrome.tabs.onUpdated.addListener(onUpdated);
+chrome.tabs.onUpdated.addListener(onUpdated); 
 chrome.tabs.onDetached.addListener(onDetached);
-chrome.tabs.onAttached.addListener(onAttached);
 chrome.tabs.onActivated.addListener(onActivated);
-//chrome.tabs.onMoved.addListener(updataAllManager);
+chrome.tabs.onAttached.addListener(onAttached);
+chrome.tabs.onMoved.addListener(onMoved);
+chrome.tabs.onCreated.addListener(onCreated);
 //chrome.tabs.onHighlighted.addListener(updataAllManager);
-//chrome.tabs.onCreated.addListener(refreshTabList);
 
 Array.prototype.remove = function(from, to) {
     let rest = this.slice((to || from) + 1 || this.length);

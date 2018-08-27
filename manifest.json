@@ -3,7 +3,7 @@
 
   "name": "ZeroMark",
   "description": "Easy Manage your tabs and marks",
-  "version": "0.2.0",
+  "version": "0.3.0",
 
   "permissions": [
     "activeTab",

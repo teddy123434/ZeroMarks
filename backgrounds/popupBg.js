@@ -1,3 +1,8 @@
+chrome.browserAction.onClicked.addListener(()=>{
+    tabManagerBgInit();
+    sendMessageToActive("updateManager");
+});
+
 //var SaveTabsQick = function(tab)
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {

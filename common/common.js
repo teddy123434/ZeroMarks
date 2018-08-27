@@ -43,7 +43,7 @@ function sendMessageToCurrent(msg)
 
 function sendMessageToActive(command,msg)
 {
-    chrome.tab.query({active:true},(tabs)=>{
+    chrome.tabs.query({active:true},(tabs)=>{
         tabs.forEach(tab => {
             if(msg)
             {
@@ -82,7 +82,7 @@ function sendMessageToWindowActive(windowId,command,msg)
             }
             else
             {
-                chrome.tabs.sendMessage(tab.id,{'command':command});
+                chrome.tabs.sendMessage(tab.id,{command});
             }
         });
         
