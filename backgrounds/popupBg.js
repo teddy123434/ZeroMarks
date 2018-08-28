@@ -1,5 +1,5 @@
 chrome.browserAction.onClicked.addListener(()=>{
-    tabManagerBgInit();
+    dataRefresh();
     sendMessageToActive("updateManager");
 });
 

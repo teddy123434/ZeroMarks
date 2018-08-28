@@ -34,7 +34,7 @@
   ],
 
   "commands":{
-      "key_openTabManager":{
+      "key_openSidebar":{
         "suggested_key":{
           "default":"Alt+G"
         },

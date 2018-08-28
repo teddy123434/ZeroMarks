@@ -46,7 +46,6 @@ function init(){
 
 window.onload=()=>{
     //更新搜尋
-    
     tabmg.find('.tabSearchBar').on('input propertychange',async(e)=>{
 
         searchInputCount++;
@@ -282,8 +281,6 @@ tabmg.on("scroll",'.list',function(e){
 
 //監聽全域按鍵事件
 document.onkeydown=(e)=>{
-    console.log(e.which);
-
     if(tabmg.css('display')!='none' && !tabmg.find('.tabSearchBar').is(":focus"))
     {
         if(e.which==27)

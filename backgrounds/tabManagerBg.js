@@ -1,18 +1,16 @@
-/*
-    tabManagerBg.js
-    分頁管理器處理用後台腳本
-    編輯者： louis
-    最後編輯時間：2018/6/9 10:00
-*/
- 
 var tabContainer;
 var searchStrs = {};
 
 tabManagerBgInit();
 
 function tabManagerBgInit(){
-    console.log("init tab manager bg");
+    console.log("Init tab manager background.");
+    dataRefresh();
+}
 
+function dataRefresh(){
+    console.log("tabManager data refreshing.")
+    searchStrs = {};
     getLatestTabList((tabList)=>{
         tabContainer = new TabContainer(tabList);
     });
@@ -20,9 +18,8 @@ function tabManagerBgInit(){
 
 function getLatestTabList(callback)
 {
-    console.log("refreshing");
     chrome.tabs.query({},apiTabs=>{
-        apiTabs.forEach(apiTab => {
+        apiTabs.forEach(apiTab=>{
             apiTab = makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]);
         });
 
@@ -65,6 +62,32 @@ function searchWithSearchStrInWindow(windowId)
     });
 }
 
+function onCreated(apiTab)
+{
+    console.log("oncreated");
+    apiTab.title = "Loading..."
+
+    tabContainer.add(makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]));
+    //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
+    sendMessageToWindowActive(apiTab.windowId,"updateManager");
+
+}
+
+function onUpdated(tabId,changeInfo,apiTab)
+{
+    console.log("onUpdataed");
+    if(changeInfo.status != "loading")
+    {
+        let oldTab = tabContainer.get(apiTab.windowId,tabId);
+        let tab = makeTabFromApiTabWithInfo(apiTab,oldTab.managerSelect,oldTab.matchSearch);
+
+        tabContainer.set(tab.windowId,tab.id,tab);
+
+        //tabContainer.set(apiTab.windowId,tabId,apiTab);
+        sendMessageToWindowActive(apiTab.windowId,"onTabChange",{'tab':apiTab});
+    }
+}
+
 function onRemove(tabId,removeInfo)
 {
     if(tabContainer.isWindowExist(removeInfo.windowId))
@@ -75,20 +98,18 @@ function onRemove(tabId,removeInfo)
     }
 }
 
-function onUpdated(tabId,changeInfo,apiTab)
+function onActivated(activeInfo)
 {
-    if(changeInfo.status == "complete")
-    {
-        if(tabContainer.isTabExist(tabId))
-        {
-            apiTab.managerSelect = tabContainer.get(tab.windowId,tabId).managerSelect;
-            apiTab.matchSearch = tabContainer.get(tab.windowId,tabId).matchSearch;
-        }
-        else apiTab = makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]);
+    chrome.tabs.sendMessage(activeInfo.tabId,{command:"updateManager"});
+}
 
-        tabContainer.set(apiTab.windowId,tabId,apiTab);
-        sendMessageToWindowActive(apiTab.windowId,"onTabChange",{'tab':apiTab});
-    }
+function onAttached(tabId,attachInfo)
+{
+    chrome.tabs.get(tabId,apiTab=>{
+        tabContainer.add(makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]));
+        //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
+        sendMessageToWindowActive(attachInfo.newWindowId,"updateManager");
+    });
 }
 
 function onDetached(tabId,detachInfo)
@@ -97,66 +118,10 @@ function onDetached(tabId,detachInfo)
     sendMessageToWindowActive(detachInfo.oldWindowId,"onTabRemove",{'tabId':tabId});
 }
 
-function onAttached(tabId,attachInfo)
-{
-    chrome.tabs.get(tabId,apiTab=>{
-        let window = tabContainer.getWindow(attachInfo.windowId);
-        window.forEach(tab => {
-            if(tab.index>= apiTab.index)tab.index++;
-        });
-        
-        tabContainer.set(attachInfo.newWindowId,tabId,makeTabFromApiTab(apiTab));
-        //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
-        sendMessageToWindowActive(attachInfo.newWindowId,"updateManager");
-    });
-}
-
-function onActivated(activeInfo)
-{
-    chrome.tabs.sendMessage(activeInfo.tabId,{command:"updateManager"});
-}
-
 function onMoved(tabId, moveInfo)
 {
-    let window = tabContainer.getWindow(moveInfo.windowId);
-    if(moveInfo.fromIndex > moveInfo.toIndex)
-    {
-        window.forEach(tab => {
-            if(tab.index>=moveInfo.toIndex && tab.index < moveInfo.fromIndex)
-            {
-                tab.index++;
-            }
-        });
-    }
-    else
-    {
-        window.forEach(tab => {
-            if(tab.index>moveInfo.fromIndex && tab.index <= moveInfo.toIndex)
-            {
-                tab.index--;
-            }
-        });
-    }
-    let tab = tabContainer.get(moveInfo.windowId,tabId);
-    tab.index = moveInfo.toIndex;
-    tabContainer.set(moveInfo.windowId,tabId,tab);
-
+    tabContainer.move(moveInfo.windowId,tabId,moveInfo.fromIndex,moveInfo.toIndex);
     sendMessageToWindowActive(moveInfo.windowId,"updateManager");
-}
-
-function onCreated(apiTab)
-{
-    let window = tabContainer.getWindow(apiTab.windowId);
-    window.forEach(tab => {
-        if(tab.index>= apiTab.index)tab.index++;
-    });
-    
-    apiTab.title = "Loading..."
-
-    tabContainer.set(apiTab.windowId,apiTab.id,makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]));
-    //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
-    sendMessageToWindowActive(apiTab.windowId,"updateManager");
-
 }
 
 //監聽內容腳本操作任務要求
@@ -170,20 +135,27 @@ chrome.runtime.onMessage.addListener(
                 {
                     tabManagerBgInit();
                     sendMessageToActive("updateManager");
+                    break;
                 }
 
                 //切換分頁
                 case "ChangeCurentTab":
                 {
                     chrome.tabs.update(Number(request.tabId), {active: true});　//切換分頁
-                    //chrome.tabs.highlight({'tabs':request.tabId});
                     break;
                 }
                 
                 //取得分頁列表
                 case "getManagerInfo":
                 {
-                    sendResponse({'list':tabContainer.getWindow(sender.tab.windowId),'searchStr':(typeof(searchStrs[sender.tab.windowId])!="undefined")?searchStrs[sender.tab.windowId]:searchStrs[sender.tab.windowId]=""});
+                    sendResponse({
+                        'list':tabContainer.getWindow(sender.tab.windowId),
+                        'searchStr':
+                            (typeof(searchStrs[sender.tab.windowId])!="undefined")?
+                            searchStrs[sender.tab.windowId]:
+                            searchStrs[sender.tab.windowId]=""
+                    });
+
                     return true; //for asyc response,without cause sendresponse not work
                     break;
                 }
@@ -230,27 +202,20 @@ chrome.runtime.onMessage.addListener(
 //監聽鍵盤熱屆
 chrome.commands.onCommand.addListener(command=>{
     switch(command){
-        case "key_openTabManager":
+        case "key_openSidebar":
         {
             chrome.tabs.query({currentWindow:true,active:true},(apiTabs)=>{
-                chrome.tabs.sendMessage(apiTabs[0].id,{command:"key_openTabManager"})　//控制內容腳本開關分頁
+                chrome.tabs.sendMessage(apiTabs[0].id,{command:"key_openSidebar"})　//控制內容腳本開關分頁
             })
         }
     }
 });
 
+chrome.tabs.onCreated.addListener(onCreated);
+chrome.tabs.onUpdated.addListener(onUpdated);
 chrome.tabs.onRemoved.addListener(onRemove);
-chrome.tabs.onUpdated.addListener(onUpdated); 
-chrome.tabs.onDetached.addListener(onDetached);
 chrome.tabs.onActivated.addListener(onActivated);
 chrome.tabs.onAttached.addListener(onAttached);
+chrome.tabs.onDetached.addListener(onDetached);
 chrome.tabs.onMoved.addListener(onMoved);
-chrome.tabs.onCreated.addListener(onCreated);
-//chrome.tabs.onHighlighted.addListener(updataAllManager);
-
-Array.prototype.remove = function(from, to) {
-    let rest = this.slice((to || from) + 1 || this.length);
-    this.length = from < 0 ? this.length + from : from;
-    return this.push.apply(this, rest);
-  };
 

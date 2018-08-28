@@ -5,6 +5,13 @@ function makeTabFromApiTab(apiTab,searchStr)
     return apiTab;
 }   
 
+function makeTabFromApiTabWithInfo(apiTab,managerSelect,matchSearch)
+{
+    apiTab.managerSelect = managerSelect;
+    apiTab.matchSearch = matchSearch;
+    return apiTab;
+}
+
 
 function TabContainer(tabList){
     this.container = {};
@@ -16,10 +23,42 @@ function TabContainer(tabList){
         });
     };
     this.get = (windowId,tabId)=>{return this.container[windowId][tabId];};
+
     this.getWindow = (windowId)=>{
         if(!this.container[windowId])this.container[windowId] = {};
         return convertValueMapToArray(this.container[windowId]);
     };
+
+    this.add = (tab)=>{
+        if(this.container[!tab.windowId]){
+            this.container[tab.windowId] = {};
+            this.container[tab.windowId][tab.id] = tab;
+        }
+        else{
+            for([key,_tab] of Object.entries(this.container[tab.windowId]))
+            {
+                if(_tab.index>= tab.index)_tab.index++;
+            }
+            this.container[tab.windowId][tab.id] = tab;
+        }
+    }
+
+    this.move = (windowId,tabId,fromIndex,toIndex)=>{
+        if(fromIndex > toIndex)
+        {
+            for ([key,tab] of Object.entries(this.container[windowId])) {
+                if(tab.index>=toIndex && tab.index < fromIndex) tab.index++;
+            }
+        }
+        else{
+            for ([key,tab] of Object.entries(this.container[windowId])) {
+                if(tab.index>fromIndex && tab.index <= toIndex) tab.index--;                
+            }
+        }
+    
+        this.container[windowId][tabId].index = toIndex;
+    }
+
     this.set = (windowId,tabId,tab)=>{
         if(!this.container[windowId])this.container[windowId] = {};
         this.container[windowId][tabId] = tab;
