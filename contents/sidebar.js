@@ -1,14 +1,17 @@
 //找路用代碼
 console.log("X");
 
-var sidebar;
+var sidebar = new Object();
 var slideSpeed = 250; //設定開關時滑動時間
 
 var SIDEBAR_CLASS_NAME = "zeromark_sidebar"
 
-init();
+sidebar.initAfterList = [];
+sidebar.initAfter = (callback)=>{
+    sidebar.initAfterList.push(callback);
+} 
 
-function init(){
+sidebar.init = ()=>{
     //插入管理器根元素
     let div = document.createElement("div");
     div.classList.add(SIDEBAR_CLASS_NAME);  //設定class屬性
@@ -30,14 +33,18 @@ function init(){
     sidebar.append = content =>{
         let jqcontent = $(content);
         sidebar.jq.append(jqcontent);
-        return content;
+        return jqcontent;
     }
     
     sidebar.onDisplayChange = new Listener();
 
     //鎖定右鍵
-    sidebar.jq.bind('contextmenu',function(e){
+  /*  sidebar.jq.bind('contextmenu',function(e){
         return false;    
+    });*/
+
+    sidebar.initAfterList.forEach(callback => {
+        callback();
     });
 }
 
@@ -77,3 +84,5 @@ chrome.runtime.onMessage.addListener(
         }
     }
 )
+
+window.onload = sidebar.init;

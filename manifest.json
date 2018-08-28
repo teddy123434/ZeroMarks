@@ -3,7 +3,7 @@
 
   "name": "ZeroMark",
   "description": "Easy Manage your tabs and marks",
-  "version": "0.3.0",
+  "version": "0.3.5",
 
   "permissions": [
     "activeTab",
@@ -28,7 +28,9 @@
   "content_scripts": [
     {
       "matches": [ "*://*/*" ],
-      "js": [ "thirdParty/jquery-ui-1.12.1.custom/external/jquery/jquery.js","thirdParty/jquery-ui-1.12.1.custom/jquery-ui.js","contents/tabManager.js" ],
+      "js": [ "thirdParty/jquery-ui-1.12.1.custom/external/jquery/jquery.js",
+              "thirdParty/jquery-ui-1.12.1.custom/jquery-ui.js","common/Listener.js",
+              "contents/sidebar.js","contents/tabManager.js" ],
       "run_at": "document_end"
     }
   ],

@@ -15,9 +15,9 @@ function Listener()
         }
     }
 
-    this.fire(sender,args)
+    this.fire = (sender,args)=>
     {
-        listeners.forEach(listener => {
+        this.listeners.forEach(listener => {
             listener(sender,args);
         });
     }

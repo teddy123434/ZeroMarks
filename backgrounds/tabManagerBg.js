@@ -69,7 +69,7 @@ function onCreated(apiTab)
 
     tabContainer.add(makeTabFromApiTab(apiTab,searchStrs[apiTab.windowId]));
     //sendMessageToWindowActive(attachInfo.newWindowId,"onTabAdd",{'tab':apiTtab});
-    sendMessageToWindowActive(apiTab.windowId,"updateManager");
+    sendMessageToWindowActive(apiTab.windowId,"onTabAdd",{'tab':apiTab});
 
 }
 

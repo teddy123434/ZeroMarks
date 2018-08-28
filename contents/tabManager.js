@@ -2,7 +2,6 @@
 console.log("X");
 
 var tabmg; //jq tabmanager dom 對象
-var slideSpeed = 250; //設定開關時滑動時間
 var scrollPosition = 0;
 var flagUpdating = false;
 
@@ -11,76 +10,147 @@ var maxSearchWait = 400;
 
 var thisWindowId;
 
-init();
-
-function init(){
-    //插入管理器根元素
-    let div = document.createElement("div");
-    div.classList.add("tabmagager");  //設定class屬性
-    div.style.background = "#cccccc"; 
-    div.style.height = "100%";
-    div.style.width = "20rem";
-    div.style.position = "fixed";
-    div.style.top = "0px";
-    div.style.right = "0px";
-    div.style.zIndex = "90000000";
-    div.style.display = "none";
-    div.style.borderStyle="none"
-    div.frameBorder = "none";
-    div.target="_parent";
-    document.body.appendChild(div);
-
-    tabmg =  $('div.tabmagager'); 
-
+sidebar.initAfter(TabManagerinit);
+function TabManagerinit(){
     //導入管理器主體
-    $.get(chrome.extension.getURL('/contents/tabManagerDesign.html'),data=>{
-    $('div.tabmagager').append(data);
-    });
+    $.get(chrome.extension.getURL('/contents/tabManagerDesign.html'), content => {
+        tabmg = sidebar.append(content);
+    }).then(response => {
+        sidebar.onDisplayChange.addListener((sender, args) => {
+            if (args.type == 'show') {
+                updateTabList();
+            }
+        });
 
-    //鎖定右鍵
-    
-    tabmg.bind('contextmenu',function(e){
-        return false;    
+        //分頁切換控制
+        tabmg.on('click', '.tabobj', (event) => {
+            if (!event.ctrlKey) {
+                let id = getTabIdByObj($(event.target));  //取得分頁id
+                chrome.runtime.sendMessage({ 'command': "ChangeCurentTab", 'tabId': id });  //呼叫後台切換分頁
+                //changeManagerDisplay(false);  //關閉管理器分頁視窗
+            }
+        });
+
+        //關閉分頁
+        tabmg.on('click', '.closeButton', (event) => { //監聽關閉按鈕按下事件
+            closeTab(getListItemByChild($(event.target)));
+        })
+
+        //監聽listItem層級滑鼠事件
+        tabmg.on("mousedown", '.listItem', function (e) {
+            switch (e.which) {
+                case 1:
+                    {
+                        if (e.ctrlKey) {
+                            chrome.runtime.sendMessage({
+                                'command': "changeTabSelect"
+                                , 'tabId': getTabIdByObj($(e.target).closest('.listItem'))
+                            });
+                            if (getListItemByChild($(e.target)).first().hasClass('listItem_selected')) {
+                                getListItemByChild($(e.target)).first().removeClass('listItem_selected');
+                            }
+                            else getListItemByChild($(e.target)).first().addClass('listItem_selected');
+                        }
+                        break;
+                    }
+                //滑鼠中鍵
+                case 2:
+                    {
+                        closeTab(getListItemByChild($(e.target)));
+                        break;
+                    }
+                //滑鼠右鍵
+                case 3:
+                    {
+                        break;
+                    }
+            }
+        });
+
+        tabmg.on("scroll", '.list', function (e) {
+            scrollPosition = target.scrollTop;
+        });
+
+        tabmg.find('.tabSearchBar').on('input propertychange', async (e) => {
+
+            searchInputCount++;
+            let locolCount = searchInputCount;
+            setTimeout(() => {
+                if (locolCount != searchInputCount) return;
+                chrome.runtime.sendMessage({ command: "changeSearchStr", str: $(e.target).val() }, () => {
+                    updateTabList(false);
+                });
+            }, maxSearchWait);
+        });
+
+        tabmg.find('.tabSearchBar').on('click', () => {
+            tabmg.find('.tabSearchBar').select();
+        });
+
+        chrome.runtime.onMessage.addListener(
+            function (request, sender, sendResponse) {
+                switch (request.command) {
+                    case "updateManager":
+                        {
+                            updateTabList();
+                            break;
+                        }
+
+                    case "onTabAdd":
+                        {
+                            if (request.tab.windowId != thisWindowId) updateTabList();
+                            console.log(makeManagerStr(request.tab));
+                            if (request.tab.index != 0)
+                            {
+                                $(tabmg.find('.listItem')[request.tab.index - 1]).after(makeManagerStr(request.tab));
+                            }
+                            else
+                            {
+                                $(tabmg.find('.listItem')[0]).before(makeManagerStr(request.tab));
+                            }    
+                            break;
+                        }
+
+                    case "onTabRemove":
+                        {
+                            tabmg.find('#' + request.tabId).remove();
+                            break;
+                        }
+
+                    case "onTabChange":
+                        {
+                            if (tabmg.find('#' + request.tab.id).length == 0) tabmg.find('.list').append(makeManagerStr(request.tab));
+                            else tabmg.find('#' + request.tab.id).replaceWith(makeManagerStr(request.tab));
+                            break;
+                        }
+
+                    default:
+                        break;
+                }
+            }
+        )
+
+        //監聽全域按鍵事件
+        document.onkeydown = (e) => {
+            if (tabmg.css('display') != 'none' && !tabmg.find('.tabSearchBar').is(":focus")) {
+                if (e.which == 27) {
+                    chrome.runtime.sendMessage({ command: "cancelSelect" });
+                    tabmg.find('.listItem').removeClass('listItem_selected');
+                }
+
+                else if (e.which == 46 && document.activeElement.id != 'sBar' && !tabmg.find('.searchBar').is(":focus")) {
+                    closeTabSelect();
+                }
+
+                else if (e.which == 65 && e.ctrlKey && !tabmg.find('.searchBar').is(":focus")) {
+                    chrome.runtime.sendMessage({ command: "selectAll" });
+                    tabmg.find('.listItem').addClass('listItem_selected');
+                    return false;
+                }
+            }
+        };
     });
 }
-
-window.onload=()=>{
-    //更新搜尋
-    tabmg.find('.tabSearchBar').on('input propertychange',async(e)=>{
-
-        searchInputCount++;
-        let locolCount = searchInputCount;
-        setTimeout(()=>{
-            if(locolCount != searchInputCount)return;
-            chrome.runtime.sendMessage({command:"changeSearchStr",str:$(e.target).val()},()=>{
-                updateTabList(false);
-            });
-        },maxSearchWait);
-    });
-    
-    tabmg.find('.tabSearchBar').on('click',()=>{
-        tabmg.find('.tabSearchBar').select();
-    });
-}
-
-//顯示管理器視窗
-function ShowManager(){
-    updateTabList();
-    tabmg.show("slide",{direction:"right"},slideSpeed);
-    tabmg.focus();
-}
-
-//關閉管理器視窗
-function HideManager(){
-    tabmg.hide("slide",{direction:"right"},slideSpeed);
-}
-
-//開關管理器視窗
-function changeManagerDisplay(open){
-    if(open==null) (tabmg.css("display")=="none")?ShowManager():HideManager();
-    else if(open) ShowManager();
-    else HideManager();
-};
 
 //清除分頁列表元素
 function cleanManagerList()
@@ -182,124 +252,3 @@ function updateTabList(withSearchStr = true)
         flagUpdating = false;
     });
 }
-
-chrome.runtime.onMessage.addListener(
-    function(request, sender, sendResponse)
-    {
-        switch(request.command)
-        {
-            case "key_openTabManager": //監聽開關管理器熱鍵按下事件
-            {
-                changeManagerDisplay(null);
-                break;
-            }
-
-            case "updateManager":
-            {
-                updateTabList();
-                break;
-            }
-            
-            case "onTabAdd":
-            {
-                if(request.tab.windowId != thisWindowId)updateTabList();
-
-                addManagerTab(request.tab);
-                break;
-            }
-
-            case "onTabRemove":
-            {
-                tabmg.find('#'+request.tabId).remove();
-                break;
-            }
-
-            case "onTabChange":
-            {
-                if(tabmg.find('#'+request.tab.id).length == 0)tabmg.find('.list').append(makeManagerStr(request.tab));
-                else tabmg.find('#'+request.tab.id).replaceWith(makeManagerStr(request.tab));
-                break;
-            }
-
-            default:
-            break;
-        }
-    }
-)
-
-//分頁切換控制
-tabmg.on('click','.tabobj',(event)=>{
-    if(!event.ctrlKey)
-    {
-        let id = getTabIdByObj($(event.target));  //取得分頁id
-        chrome.runtime.sendMessage({'command':"ChangeCurentTab",'tabId':id});  //呼叫後台切換分頁
-        //changeManagerDisplay(false);  //關閉管理器分頁視窗
-    }   
-});
-
-//關閉分頁
-tabmg.on('click','.closeButton',(event)=>{ //監聽關閉按鈕按下事件
-    closeTab(getListItemByChild($(event.target)));
-})
-
-//監聽listItem層級滑鼠事件
-tabmg.on("mousedown", '.listItem', function(e) {
-    switch(e.which)
-    {
-        case 1:
-        {
-            if(e.ctrlKey)
-            {
-                chrome.runtime.sendMessage({
-                    'command':"changeTabSelect"
-                    ,'tabId':getTabIdByObj($(e.target).closest('.listItem'))});
-                if(getListItemByChild($(e.target)).first().hasClass('listItem_selected'))
-                {
-                    getListItemByChild($(e.target)).first().removeClass('listItem_selected');
-                }
-                else getListItemByChild($(e.target)).first().addClass('listItem_selected');
-            }
-            break;
-        }
-        //滑鼠中鍵
-        case 2:
-        {
-            closeTab(getListItemByChild($(e.target)));
-            break;
-        }
-        //滑鼠右鍵
-        case 3:
-        {
-            break;
-        }
-    }
-});
-
-tabmg.on("scroll",'.list',function(e){
-    scrollPosition = target.scrollTop;
-});
-
-//監聽全域按鍵事件
-document.onkeydown=(e)=>{
-    if(tabmg.css('display')!='none' && !tabmg.find('.tabSearchBar').is(":focus"))
-    {
-        if(e.which==27)
-        {
-            chrome.runtime.sendMessage({command:"cancelSelect"});
-            tabmg.find('.listItem').removeClass('listItem_selected');
-        }
-        
-        else if(e.which==46 && document.activeElement.id !='sBar'&&!tabmg.find('.searchBar').is(":focus"))
-        {
-            closeTabSelect();
-        }
-
-        else if(e.which==65 && e.ctrlKey&&!tabmg.find('.searchBar').is(":focus"))
-        {
-            chrome.runtime.sendMessage({command:"selectAll"});
-            tabmg.find('.listItem').addClass('listItem_selected');
-            return false;
-        }
-        
-    }
-};
