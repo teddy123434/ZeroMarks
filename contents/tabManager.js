@@ -142,7 +142,7 @@ function TabManagerinit(){
                     closeTabSelect();
                 }
 
-                else if (e.which == 65 && e.ctrlKey && !tabmg.find('.searchBar').is(":focus")) {
+                else if (e.which == 65 && e.ctrlKey && !tabmg.find('.searchBar').is(":focus") && tabmg.css('display') != 'none') {
                     chrome.runtime.sendMessage({ command: "selectAll" });
                     tabmg.find('.listItem').addClass('listItem_selected');
                     return false;
