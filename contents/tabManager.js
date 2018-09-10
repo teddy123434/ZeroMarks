@@ -11,7 +11,8 @@ var maxSearchWait = 400;
 var thisWindowId;
 
 sidebar.initAfter(TabManagerinit);
-function TabManagerinit(){
+
+function TabManagerinit() {
     //導入管理器主體
     $.get(chrome.extension.getURL('/contents/tabManagerDesign.html'), content => {
         tabmg = sidebar.append(content);
@@ -25,8 +26,8 @@ function TabManagerinit(){
         //分頁切換控制
         tabmg.on('click', '.tabobj', (event) => {
             if (!event.ctrlKey) {
-                let id = getTabIdByObj($(event.target));  //取得分頁id
-                chrome.runtime.sendMessage({ 'command': "ChangeCurentTab", 'tabId': id });  //呼叫後台切換分頁
+                let id = getTabIdByObj($(event.target)); //取得分頁id
+                chrome.runtime.sendMessage({ 'command': "ChangeCurentTab", 'tabId': id }); //呼叫後台切換分頁
                 //changeManagerDisplay(false);  //關閉管理器分頁視窗
             }
         });
@@ -37,29 +38,28 @@ function TabManagerinit(){
         })
 
         //監聽listItem層級滑鼠事件
-        tabmg.on("mousedown", '.listItem', function (e) {
+        tabmg.on("mousedown", '.listItem', function(e) {
             switch (e.which) {
                 case 1:
                     {
                         if (e.ctrlKey) {
                             chrome.runtime.sendMessage({
-                                'command': "changeTabSelect"
-                                , 'tabId': getTabIdByObj($(e.target).closest('.listItem'))
+                                'command': "changeTabSelect",
+                                'tabId': getTabIdByObj($(e.target).closest('.listItem'))
                             });
                             if (getListItemByChild($(e.target)).first().hasClass('listItem_selected')) {
                                 getListItemByChild($(e.target)).first().removeClass('listItem_selected');
-                            }
-                            else getListItemByChild($(e.target)).first().addClass('listItem_selected');
+                            } else getListItemByChild($(e.target)).first().addClass('listItem_selected');
                         }
                         break;
                     }
-                //滑鼠中鍵
+                    //滑鼠中鍵
                 case 2:
                     {
                         closeTab(getListItemByChild($(e.target)));
                         break;
                     }
-                //滑鼠右鍵
+                    //滑鼠右鍵
                 case 3:
                     {
                         break;
@@ -67,11 +67,11 @@ function TabManagerinit(){
             }
         });
 
-        tabmg.on("scroll", '.list', function (e) {
+        tabmg.on("scroll", '.list', function(e) {
             scrollPosition = target.scrollTop;
         });
 
-        tabmg.find('.tabSearchBar').on('input propertychange', async (e) => {
+        tabmg.find('.tabSearchBar').on('input propertychange', async(e) => {
 
             searchInputCount++;
             let locolCount = searchInputCount;
@@ -88,7 +88,7 @@ function TabManagerinit(){
         });
 
         chrome.runtime.onMessage.addListener(
-            function (request, sender, sendResponse) {
+            function(request, sender, sendResponse) {
                 switch (request.command) {
                     case "updateManager":
                         {
@@ -100,14 +100,11 @@ function TabManagerinit(){
                         {
                             if (request.tab.windowId != thisWindowId) updateTabList();
                             console.log(makeManagerStr(request.tab));
-                            if (request.tab.index != 0)
-                            {
+                            if (request.tab.index != 0) {
                                 $(tabmg.find('.listItem')[request.tab.index - 1]).after(makeManagerStr(request.tab));
-                            }
-                            else
-                            {
+                            } else {
                                 $(tabmg.find('.listItem')[0]).before(makeManagerStr(request.tab));
-                            }    
+                            }
                             break;
                         }
 
@@ -132,41 +129,37 @@ function TabManagerinit(){
 
         //監聽全域按鍵事件
         document.onkeydown = (e) => {
-            if (tabmg.css('display') != 'none' && !tabmg.find('.tabSearchBar').is(":focus")) {
+            if (sidebar.isOpened() && !tabmg.find('.tabSearchBar').is(":focus")) {
+                console.log("h");
                 if (e.which == 27) {
                     chrome.runtime.sendMessage({ command: "cancelSelect" });
                     tabmg.find('.listItem').removeClass('listItem_selected');
-                }
-
-                else if (e.which == 46 && document.activeElement.id != 'sBar' && !tabmg.find('.searchBar').is(":focus")) {
+                } else if (e.which == 46 && document.activeElement.id != 'sBar' && !tabmg.find('.searchBar').is(":focus")) {
                     closeTabSelect();
-                }
-
-                else if (e.which == 65 && e.ctrlKey && !tabmg.find('.searchBar').is(":focus") && tabmg.css('display') != 'none') {
+                } else if (e.which == 65 && e.ctrlKey && !tabmg.find('.searchBar').is(":focus")) {
                     chrome.runtime.sendMessage({ command: "selectAll" });
                     tabmg.find('.listItem').addClass('listItem_selected');
                     return false;
                 }
             }
+            return true;
         };
     });
 }
 
 //清除分頁列表元素
-function cleanManagerList()
-{
+function cleanManagerList() {
     tabmg.find('div.list').empty();
 }
 
 //將js字串轉成html安全字串
-function htmlEncode(value){
+function htmlEncode(value) {
     //create a in-memory div, set it's inner text(which jQuery automatically encodes)
     //then grab the encoded contents back out.  The div never exists on the page.
     return $('<div/>').text(value).html();
 }
 
-function makeManagerStr(tab)
-{
+function makeManagerStr(tab) {
     return `<div class='listItem${tab.managerSelect?' listItem_selected':''} ${tab.matchSearch?'':' invisible'}' id='${tab.id}'>
                 <span class='tabobj'>
                     <img class='favicon' src='${((tab.favIconUrl!=null)?tab.favIconUrl:chrome.extension.getURL("imgs/difaultFavicon.png"))}'>
@@ -178,76 +171,70 @@ function makeManagerStr(tab)
 
 //添加分頁列表元素
 //tab:chrome.tabs.Tab 物件
-function addManagerTab(tab)
-{
-    tabmg.find('.list').append(makeManagerStr(tab));   
+function addManagerTab(tab) {
+    tabmg.find('.list').append(makeManagerStr(tab));
 }
 
 //取得 Tab Id
-function getTabIdByObj(jqobj)
-{
+function getTabIdByObj(jqobj) {
     return jqobj.closest('.listItem').attr('id');
 }
 
 //取得 List Item
-function getListItemByChild(jqobj)
-{
+function getListItemByChild(jqobj) {
     return jqobj.closest('.listItem');
 }
 
-function getListItemById(tabId)
-{
-    tabmg.find('.listItem').each((i,e)=>{
+function getListItemById(tabId) {
+    tabmg.find('.listItem').each((i, e) => {
         let obj = $(e);
-        if(getTabIdBy(obj)==tabId)return obj;
+        if (getTabIdBy(obj) == tabId) return obj;
     });
 }
 
 //取得選取分頁狀態
-function IsTabSelect(listItem)
-{
+function IsTabSelect(listItem) {
     return listItem.hasClass('listItem_selected');
 }
 
 //關閉分頁並移除列表元素
-function closeTab(listItem)
-{
-    chrome.runtime.sendMessage({'command':"closeTabs",'tabIds':Number(getTabIdByObj(listItem))}); //呼叫後台關閉分頁
+function closeTab(listItem) {
+    chrome.runtime.sendMessage({ 'command': "closeTabs", 'tabIds': Number(getTabIdByObj(listItem)) }); //呼叫後台關閉分頁
     listItem.remove();
 }
 
 //關閉選取分頁
-function closeTabSelect(){
+function closeTabSelect() {
     let tabIds = [];
-    tabmg.find('.listItem_selected').each((i,e)=>{
+    tabmg.find('.listItem_selected').each((i, e) => {
         tabIds.push(Number(getTabIdByObj($(e))));
         e.remove();
     });
-    chrome.runtime.sendMessage({'command':"closeTabs",'tabIds':tabIds}); //呼叫後台關閉分頁
+    chrome.runtime.sendMessage({ 'command': "closeTabs", 'tabIds': tabIds }); //呼叫後台關閉分頁
 }
 
 //刷新分頁列表
-function updateTabList(withSearchStr = true)
-{
-    if(flagUpdating)return;else flagUpdating = true;
+function updateTabList(withSearchStr = true) {
+    if (flagUpdating) return;
+    else flagUpdating = true;
     console.log("updating")
     let tempScrollPosition = scrollPosition;
     cleanManagerList();
-    
-    chrome.runtime.sendMessage({command:"getManagerInfo"},(res)=>{  //取得當前分頁列表(內容腳本無權限，需調用後台腳本)    
-        if(withSearchStr && tabmg.find('.tabSearchBar').val()!=res.searchStr)tabmg.find('.tabSearchBar').val(res.searchStr);
 
-        res.list.sort((a,b)=>{
-            if(a.index < b.index) return -1;
-            else if(a.index > b.index) return 1;
+    chrome.runtime.sendMessage({ command: "getManagerInfo" }, (res) => { //取得當前分頁列表(內容腳本無權限，需調用後台腳本)    
+        if (withSearchStr && tabmg.find('.tabSearchBar').val() != res.searchStr) tabmg.find('.tabSearchBar').val(res.searchStr);
+
+        res.list.sort((a, b) => {
+            if (a.index < b.index) return -1;
+            else if (a.index > b.index) return 1;
             return 0;
         });
 
-        res.list.forEach(tab=>{
-           node = addManagerTab(tab);
-           thisWindowId = tab.windowId;
+        res.list.forEach(tab => {
+            node = addManagerTab(tab);
+            thisWindowId = tab.windowId;
         });
-        
+
         //tabmg.find('.list').scrollTo(0,tempScrollPosition);
         flagUpdating = false;
     });

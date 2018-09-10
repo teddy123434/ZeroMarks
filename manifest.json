@@ -1,49 +1,48 @@
 {
-  "manifest_version": 2,
+    "manifest_version": 2,
 
-  "name": "ZeroMark",
-  "description": "Easy Manage your tabs and marks",
-  "version": "0.3.5",
+    "name": "ZeroMark",
+    "description": "Easy Manage your tabs and marks",
+    "version": "0.3.6",
 
-  "permissions": [
-    "activeTab",
-    "tabs",
-    "storage",
-    "bookmarks",
-    "contextMenus",
-    "unlimitedStorage"
-  ],
+    "permissions": [
+        "activeTab",
+        "tabs",
+        "storage",
+        "bookmarks",
+        "contextMenus",
+        "unlimitedStorage"
+    ],
 
-  "background": {
-    "scripts": [ "common/common.js","backgrounds/popupBg.js","common/tabContainer.js","backgrounds/tabManagerBg.js","backgrounds/contextMenu.js","backgrounds/bookMark.js" ],
-    "persistent": true
-  },
+    "background": {
+        "scripts": ["common/common.js", "backgrounds/popupBg.js", "common/tabContainer.js", "backgrounds/tabManagerBg.js", "backgrounds/contextMenu.js", "backgrounds/bookMark.js"],
+        "persistent": true
+    },
 
-  "options_page": "options.html",
+    "options_page": "options.html",
 
-  "browser_action": {
-    "default_icon": "imgs/icon.png"
-  },
+    "browser_action": {
+        "default_icon": "imgs/icon.png"
+    },
 
-  "content_scripts": [
-    {
-      "matches": [ "*://*/*" ],
-      "js": [ "thirdParty/jquery-ui-1.12.1.custom/external/jquery/jquery.js",
-              "thirdParty/jquery-ui-1.12.1.custom/jquery-ui.js","common/Listener.js",
-              "contents/sidebar.js","contents/tabManager.js" ],
-      "run_at": "document_end"
-    }
-  ],
+    "content_scripts": [{
+        "matches": ["*://*/*"],
+        "js": ["thirdParty/jquery-ui-1.12.1.custom/external/jquery/jquery.js",
+            "thirdParty/jquery-ui-1.12.1.custom/jquery-ui.js", "common/Listener.js",
+            "contents/sidebar.js", "contents/tabManager.js"
+        ],
+        "run_at": "document_end"
+    }],
 
-  "commands":{
-      "key_openSidebar":{
-        "suggested_key":{
-          "default":"Alt+G"
-        },
-        "description":"Open TabManager"
-      }
-  },
+    "commands": {
+        "key_openSidebar": {
+            "suggested_key": {
+                "default": "Alt+G"
+            },
+            "description": "Open TabManager"
+        }
+    },
 
-  "web_accessible_resources": ["contents/tabManagerDesign.html","imgs/*"],
-  "content_security_policy": "script-src 'self' https://ajax.googleapis.com; object-src 'self'"
+    "web_accessible_resources": ["contents/tabManagerDesign.html", "imgs/*"],
+    "content_security_policy": "script-src 'self' https://ajax.googleapis.com; object-src 'self'"
 }
