@@ -10,6 +10,9 @@ var maxSearchWait = 400;
 
 var thisWindowId;
 
+//區域選取用
+var lastSelectoId = -1;
+
 sidebar.initAfter(TabManagerinit);
 
 function TabManagerinit() {
@@ -43,13 +46,53 @@ function TabManagerinit() {
                 case 1:
                     {
                         if (e.ctrlKey) {
-                            chrome.runtime.sendMessage({
-                                'command': "changeTabSelect",
-                                'tabId': getTabIdByObj($(e.target).closest('.listItem'))
-                            });
-                            if (getListItemByChild($(e.target)).first().hasClass('listItem_selected')) {
-                                getListItemByChild($(e.target)).first().removeClass('listItem_selected');
-                            } else getListItemByChild($(e.target)).first().addClass('listItem_selected');
+                            let changeSelect = (targetOjb) =>
+                            {
+                                chrome.runtime.sendMessage({
+                                    'command': "changeTabSelect",
+                                    'tabId': getTabIdByObj(targetOjb.closest('.listItem'))
+                                });
+                                if (getListItemByChild(targetOjb).first().hasClass('listItem_selected')) {
+                                    getListItemByChild(targetOjb).first().removeClass('listItem_selected');
+                                } else getListItemByChild(targetOjb).first().addClass('listItem_selected');
+                            }    
+                            if (e.shiftKey && lastSelectoId != -1)
+                            {
+                                tabItems = tabmg.find('.listItem');
+                                let lastIndex = -1, thisIndex = -1;
+                                tabItems.each((i, _e) => {
+                                    let obj = $(_e);
+                                    if (getTabIdByObj(obj) == lastSelectoId) lastIndex = i;
+                                    if (getTabIdByObj(obj) == getTabIdByObj($(e.target)))thisIndex = i;
+                                });
+                                if (lastIndex == -1) lastSelectoId = -1
+                                else{
+                                    let lastSelectType = getListItemById(lastSelectoId).first().hasClass(('listItem_selected'));
+                                    if (lastIndex < thisIndex)
+                                    {
+                                        for (let i = lastIndex + 1; i <= thisIndex; i++)
+                                        {
+                                            if (getListItemByChild($(tabItems[i])).first().hasClass('listItem_selected') != lastSelectType) {
+                                                changeSelect($(tabItems[i]));
+                                            }    
+                                            
+                                        }    
+                                    }   
+                                    else if (lastIndex > thisIndex)
+                                    {
+                                        for (let i = lastIndex - 1; i => thisIndex; i--) {
+                                            if (getListItemByChild($(tabItems[i])).first().hasClass('listItem_selected') != lastSelectType) {
+                                                changeSelect($(tabItems[i]));
+                                            }    
+                                        }    
+                                    }    
+                                }    
+                            }    
+                            else
+                            {
+                                changeSelect($(e.target)); 
+                            }    
+                            lastSelectoId = getTabIdByObj($(e.target));       
                         }
                         break;
                     }
@@ -65,6 +108,7 @@ function TabManagerinit() {
                         break;
                     }
             }
+            return false;
         });
 
         tabmg.on("scroll", '.list', function(e) {
@@ -177,7 +221,7 @@ function addManagerTab(tab) {
 
 //取得 Tab Id
 function getTabIdByObj(jqobj) {
-    return jqobj.closest('.listItem').attr('id');
+    let a = jqobj.closest('.listItem').attr('id'); return a;    
 }
 
 //取得 List Item
@@ -186,10 +230,15 @@ function getListItemByChild(jqobj) {
 }
 
 function getListItemById(tabId) {
+    let returnObj = null;
     tabmg.find('.listItem').each((i, e) => {
         let obj = $(e);
-        if (getTabIdBy(obj) == tabId) return obj;
+        if (getTabIdByObj(obj) == tabId) {
+            returnObj = obj;
+            return false;
+        } 
     });
+    return returnObj;
 }
 
 //取得選取分頁狀態
